@@ -27,6 +27,7 @@ MANIFEST
 # Environments
 .env
 .venv
+.vscode/
 env/
 venv/
 ENV/
