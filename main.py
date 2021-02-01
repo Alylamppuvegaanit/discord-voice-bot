@@ -71,9 +71,9 @@ async def leave(ctx):
 
 @bot.command(pass_context=True)
 async def seven(ctx):
-    
-    playSound(ctx, audio)
-    
+    audio = discord.FFmpegPCMAudio(os.path.join(DIR, "seiska.wav"))
+    await playSound(ctx, audio)
+
 @bot.command(pass_context=True)
 async def play(ctx, *args):
     if len(args) == 0:
@@ -82,6 +82,6 @@ async def play(ctx, *args):
     search = ' '.join(args)
     getWithSearch(search)
     audio = discord.FFmpegPCMAudio("/tmp/audio-from-yt")
-    playSound(ctx, audio)
+    await playSound(ctx, audio)
 
 bot.run(TOKEN)
