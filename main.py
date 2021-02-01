@@ -6,11 +6,11 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from discord.voice_client import VoiceClient
 import asyncio
-
+from youtube import getWithSearch
 
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
 
+TOKEN = os.getenv('TOKEN')
 DIR = os.getcwd()
 LOGFILE = os.path.join(DIR, "log.txt")
 
@@ -19,12 +19,11 @@ voiceClient = None
 
 def log(msg):
     if not os.path.isfile(LOGFILE):
-        with open(LOGFILE, 'w') as logfile:
-            logfile.write(f"{datetime.datetime.today().strftime('[%Y-%m-%d %H:%M]')}: {msg}\n")
-            return
+        logfile = open(LOGFILE, 'w')
     else:
-        with open(LOGFILE, 'a') as logfile:
-            logfile.write(f"{datetime.datetime.today().strftime('[%Y-%m-%d %H:%M]')}: {msg}\n")
+        logfile = open(LOGFILE, 'a')
+    logfile.write(f"{datetime.datetime.today().strftime('[%Y-%m-%d %H:%M]')}: {msg}\n")
+    logfile.close()
 
 async def disconnect(ctx):
     if VoiceClient != None:
@@ -33,6 +32,15 @@ async def disconnect(ctx):
         await voiceClient.disconnect()
         voiceClient = None
     return
+
+async def playSound(ctx, audio):
+    if VoiceClient == None:
+        await ctx.channel.send("No voice channel")
+        return
+    if not voiceClient.is_connected() or voiceClient.is_playing():
+        await ctx.channel.send("No voice channel")
+        return
+    voiceClient.play(audio)
 
 @bot.event
 async def on_ready():
@@ -63,13 +71,17 @@ async def leave(ctx):
 
 @bot.command(pass_context=True)
 async def seven(ctx):
-    if VoiceClient == None:
-        await ctx.channel.send("No voice channel")
+    
+    playSound(ctx, audio)
+    
+@bot.command(pass_context=True)
+async def play(ctx, *args):
+    if len(args) == 0:
+        await ctx.channel.send("No name specified. Quitting...")
         return
-    if not voiceClient.is_connected() or voiceClient.is_playing():
-        await ctx.channel.send("No voice channel")
-        return
-    audio = discord.FFmpegPCMAudio(os.path.join(DIR, 'seiska.wav'))
-    voiceClient.play(audio)
+    search = ' '.join(args)
+    getWithSearch(search)
+    audio = discord.FFmpegPCMAudio("/tmp/audio-from-yt")
+    playSound(ctx, audio)
 
 bot.run(TOKEN)
