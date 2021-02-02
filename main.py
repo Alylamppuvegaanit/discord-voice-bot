@@ -7,13 +7,14 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
 from discord.voice_client import VoiceClient
-from youtube import getWithSearch
+from youtube import getWithSearch, getWithUrl
 
 load_dotenv()
 
 TOKEN = os.getenv('TOKEN')
 DIR = os.getcwd()
 LOGFILE = os.path.join(DIR, "log.txt")
+YT_FILE = "/tmp/audio-from-yt.mp4"
 
 bot = commands.Bot(command_prefix="!")
 voiceClient = None
@@ -36,10 +37,12 @@ async def disconnect(ctx):
 
 async def playSound(ctx, audio):
     if VoiceClient == None:
+        log("playSound: no voice channel")
         await ctx.channel.send("No voice channel")
         return
     if not voiceClient.is_connected() or voiceClient.is_playing():
-        await ctx.channel.send("No voice channel")
+        log("error in playSound")
+        await ctx.channel.send("error!")
         return
     voiceClient.play(audio)
 
@@ -72,6 +75,8 @@ async def leave(ctx):
 
 @bot.command(pass_context=True)
 async def seven(ctx):
+    if voiceClient == None:
+        await join(ctx)
     audio = discord.FFmpegPCMAudio(os.path.join(DIR, "seiska.wav"))
     await playSound(ctx, audio)
 
@@ -80,9 +85,17 @@ async def play(ctx, *args):
     if len(args) == 0:
         await ctx.channel.send("No name specified. Quitting...")
         return
-    search = ' '.join(args)
-    await getWithSearch(search)
-    audio = discord.FFmpegPCMAudio("/tmp/audio-from-yt.mp4")
+    if voiceClient == None:
+        await join(ctx)
+    if len(args) == 1 and args[0].startswith("https://www.youtube.com/"):
+        getWithUrl(args[0])
+    else:
+        search = ' '.join(args)
+        getWithSearch(search)
+    if not os.path.isfile(YT_FILE):
+        await ctx.channel.send("No name specified. Quitting...")
+        return
+    audio = discord.FFmpegPCMAudio(YT_FILE)
     await playSound(ctx, audio)
 
 bot.run(TOKEN)
