@@ -1,5 +1,5 @@
 import urllib.request
-from requests_html import HTMLSession
+from requests_html import AsyncHTMLSession
 from pytube import YouTube
 from bs4 import BeautifulSoup
 
@@ -7,14 +7,14 @@ PATH = "/tmp"
 FILENAME = "audio-from-yt"
 
 
-def getVideoUrls(searchTerm):
+async def getVideoUrls(searchTerm):
     query = urllib.parse.quote(searchTerm)
     url = "https://www.youtube.com/results?search_query=" + query
-    session = HTMLSession()
-    response = session.get(url)
+    session = AsyncHTMLSession()
+    response = await session.get(url)
 
     # Execute JS
-    response.html.render(sleep=1)
+    await response.html.arender(sleep=1)
     
     soup = BeautifulSoup(response.html.html, "html.parser")
     hits = soup.findAll("a", attrs={"id": "video-title"})
@@ -27,9 +27,9 @@ def getVideoUrls(searchTerm):
 def getWithUrl(url):
     # Download audio
     yt = YouTube(url)
-    yt.streams.filter(only_audio=True).first().download(output_path=PATH, filename=FILENAME)
+    yt.streams.filter(only_audio=True, file_extension='mp4').first().download(output_path=PATH, filename=FILENAME)
 
 
-def getWithSearch(searchTerm):
-    url = getVideoUrls(searchTerm)[0]
+async def getWithSearch(searchTerm):
+    url = (await getVideoUrls(searchTerm))[0]
     getWithUrl(url)
