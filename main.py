@@ -81,8 +81,8 @@ async def play(ctx, *args):
         await ctx.channel.send("No name specified. Quitting...")
         return
     search = ' '.join(args)
-    getWithSearch(search)
-    audio = discord.FFmpegPCMAudio("/tmp/audio-from-yt")
+    await getWithSearch(search)
+    audio = discord.FFmpegPCMAudio("/tmp/audio-from-yt.mp4")
     await playSound(ctx, audio)
 
 bot.run(TOKEN)
