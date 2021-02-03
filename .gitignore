@@ -34,3 +34,11 @@ ENV/
 
 log.txt
 
+
+# TTS stuff
+TTS/
+best_model.pth.tar
+config.json
+gst-style-example.wav
+speakers.json
+TTS-checkpoint.zip

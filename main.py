@@ -9,7 +9,6 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from discord.voice_client import VoiceClient
 from youtube import getWithSearch, getWithUrl
-
 load_dotenv()
 
 TOKEN = os.getenv('TOKEN')
@@ -21,6 +20,13 @@ bot = commands.Bot(command_prefix="!")
 voiceClient = None
 
 gameStarted = False
+
+# Setup TTS
+import multivoice
+import soundfile as sf
+model, vocoder_model, CONFIG, use_cuda, ap, speaker_fileid, speaker_embedding = multivoice.setup() # Load module
+speaker_embedding = multivoice.getSpeaker(4) # Set speaker
+gst_style = {"0": 0.5, "1": 0.5, "3": -0.5, "4": 0.5} # Use custom gst style
 
 def log(msg):
     if not os.path.isfile(LOGFILE):
@@ -144,5 +150,42 @@ async def villapaitapeli(ctx, *args):
         await ctx.channel.send("wrong command. available commands are: start, joo, ei")
         return
 
+@bot.command(pass_context=True)
+async def say(ctx, *args):
+    if voiceClient == None:
+        await join(ctx)
+    print("Say command")
+    if len(args) < 0:
+        log("No argument given to say")
+        return
+    sentence = ' '.join(args)
+    print("Generating sentence")
+    wav = multivoice.tts(model,
+                        vocoder_model,
+                        sentence,
+                        CONFIG,
+                        use_cuda,
+                        ap,
+                        True,
+                        speaker_fileid,
+                        speaker_embedding,
+                        gst_style=None)
+    sf.write('/tmp/say.wav', wav, 22050)
+    audio = discord.FFmpegPCMAudio('/tmp/say.wav')
+    await playSound(ctx, audio)
 
+@bot.command(pass_context=True)
+async def setSpeaker(ctx, *args):
+    if len(args) != 1:
+        log("No argument given to say")
+        return
+    
+    try:
+        voice = int(args[0])
+        if (voice > 96):
+            voice = 96
+        speaker_embedding = multivoice.getSpeaker(voice) # Set speaker
+        await ctx.channel.send(f"Voice changed to {voice}")
+    except:
+        print("Bad input")
 bot.run(TOKEN)

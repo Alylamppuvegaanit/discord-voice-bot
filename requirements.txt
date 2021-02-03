@@ -4,3 +4,4 @@ pynacl
 requests_html
 pytube
 beautifulsoup4
+soundfile
