@@ -1,7 +1,7 @@
 import os
 import datetime
 import asyncio
-from enum import Enum
+from time import sleep
 
 from dotenv import load_dotenv
 import discord
@@ -107,6 +107,7 @@ async def play(ctx, *args):
 
 @bot.command(pass_context=True)
 async def villapaitapeli(ctx, *args):
+    global gameStarted
     if len(args) != 1:
         log("villapaitapeli: bad arguments")
         return
@@ -115,30 +116,33 @@ async def villapaitapeli(ctx, *args):
         log("villapaitapeli started")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "sakarin_villapaitapeli.mp3"))
         await playSound(ctx, audio)
+        sleep(3)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "pue_sakarille_villapaita.mp3"))
         await playSound(ctx, audio)
-        global gameStarted
+        sleep(3)
         gameStarted = True
         return
     elif gameStarted and cmd == "joo":
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hihihi_kutittaa.mp3"))
         await playSound(ctx, audio)
+        sleep(3)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "voitit_pelin.mp3"))
         await playSound(ctx, audio)
-        global gameStarted
+        sleep(3)
         gameStarted = False
         return
     elif gameStarted and cmd == "ei":
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hmm.mp3"))
         await playSound(ctx, audio)
+        sleep(3)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hävisit_pelin.mp3"))
         await playSound(ctx, audio)
-        global gameStarted
+        sleep(3)
         gameStarted = False
         return
     else:
         await ctx.channel.send("wrong command. available commands are: start, joo, ei")
         return
-    
-    
+
+
 bot.run(TOKEN)
