@@ -38,7 +38,7 @@ def setup():
     VOCODER_PATH = ''
     VOCODER_CONFIG_PATH = ''
 
-    USE_CUDA = True
+    USE_CUDA = False
 
 
     # load the config

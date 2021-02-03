@@ -116,7 +116,10 @@ async def villapaitapeli(ctx, *args):
     global gameStarted
     if len(args) != 1:
         log("villapaitapeli: bad arguments")
+        await ctx.channel.send("Sakarin villapaitapeli: use argument 'start' to start the game. Use arguments 'joo' or 'ei' to answer the question. This requires the player to be on a voice channel")
         return
+    if VoiceClient == None:
+        await join(ctx)
     cmd = args[0]
     if cmd == "start":
         log("villapaitapeli started")
