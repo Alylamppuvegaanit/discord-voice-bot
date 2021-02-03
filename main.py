@@ -26,7 +26,7 @@ import multivoice
 import soundfile as sf
 model, vocoder_model, CONFIG, use_cuda, ap, speaker_fileid, speaker_embedding = multivoice.setup() # Load module
 speaker_embedding = multivoice.getSpeaker(4) # Set speaker
-gst_style = {"0": 0.5, "1": 0.5, "3": -0.5, "4": 0.5} # Use custom gst style
+gst_style = {"0": 0, "1": 0, "3": 0, "4": 0} # Use custom gst style
 
 def log(msg):
     if not os.path.isfile(LOGFILE):
@@ -173,7 +173,7 @@ async def say(ctx, *args):
                         speaker_fileid,
                         speaker_embedding,
                         gst_style=None)
-    sf.write('/tmp/say.wav', wav, 22050)
+    sf.write('/tmp/say.wav', wav, int(22050*0.9))
     audio = discord.FFmpegPCMAudio('/tmp/say.wav')
     await playSound(ctx, audio)
 
