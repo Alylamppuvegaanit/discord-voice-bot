@@ -82,16 +82,20 @@ async def seven(ctx):
 
 @bot.command(pass_context=True)
 async def play(ctx, *args):
+    if VoiceClient == None:
+        await join(ctx)
+    if not voiceClient.is_connected() or voiceClient.is_playing():
+        log("error in playSound")
+        await ctx.channel.send("error!")
+        return
     if len(args) == 0:
         await ctx.channel.send("No name specified. Quitting...")
         return
-    if voiceClient == None:
-        await join(ctx)
     if len(args) == 1 and args[0].startswith("https://www.youtube.com/"):
-        getWithUrl(args[0])
+        await getWithUrl(args[0])
     else:
         search = ' '.join(args)
-        getWithSearch(search)
+        await getWithSearch(search)
     if not os.path.isfile(YT_FILE):
         await ctx.channel.send("No name specified. Quitting...")
         return
