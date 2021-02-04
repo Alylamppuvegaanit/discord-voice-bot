@@ -42,18 +42,26 @@ async def disconnect(ctx):
         log(f"leaving voice on channel {voiceClient.channel} by {ctx.message.author}")
         await voiceClient.disconnect()
         voiceClient = None
-    return
 
-async def playSound(ctx, audio):
+async def playSound(ctx):
     if VoiceClient == None:
         log("playSound: no voice channel")
         await ctx.channel.send("No voice channel")
         return
-    if not voiceClient.is_connected() or voiceClient.is_playing():
-        log("error in playSound")
-        await ctx.channel.send("error!")
+    if not voiceClient.is_connected()
+        log("playSound: no voice channel")
+        await ctx.channel.send("No voice channel")
         return
-    voiceClient.play(audio)
+    if len(voiceQueue) == 0:
+        return
+    if voiceClient.is_playing():
+        return
+    voiceClient.play(voiceQueue.pop(0), after=playSound(ctx))
+
+async def queueSound(ctx, audio)
+    global voiceQueue
+    voiceQueue.append(audio)
+    await playSound(ctx)
 
 @bot.event
 async def on_ready():
@@ -87,16 +95,12 @@ async def seven(ctx):
     if voiceClient == None:
         await join(ctx)
     audio = discord.FFmpegPCMAudio(os.path.join(DIR, "seiska.wav"))
-    await playSound(ctx, audio)
+    await queueSound(ctx, audio)
 
 @bot.command(pass_context=True)
 async def play(ctx, *args):
     if VoiceClient == None:
         await join(ctx)
-    if not voiceClient.is_connected() or voiceClient.is_playing():
-        log("error in playSound")
-        await ctx.channel.send("error!")
-        return
     if len(args) == 0:
         await ctx.channel.send("No name specified. Quitting...")
         return
@@ -109,7 +113,7 @@ async def play(ctx, *args):
         await ctx.channel.send("No name specified. Quitting...")
         return
     audio = discord.FFmpegPCMAudio(YT_FILE)
-    await playSound(ctx, audio)
+    await queueSound(ctx, audio)
 
 @bot.command(pass_context=True)
 async def villapaitapeli(ctx, *args):
@@ -124,29 +128,23 @@ async def villapaitapeli(ctx, *args):
     if cmd == "start":
         log("villapaitapeli started")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "sakarin_villapaitapeli.mp3"))
-        await playSound(ctx, audio)
-        sleep(3)
+        await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "pue_sakarille_villapaita.mp3"))
-        await playSound(ctx, audio)
-        sleep(3)
+        await queueSound(ctx, audio)
         gameStarted = True
         return
     elif gameStarted and cmd == "joo":
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hihihi_kutittaa.mp3"))
-        await playSound(ctx, audio)
-        sleep(3)
+        await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "voitit_pelin.mp3"))
-        await playSound(ctx, audio)
-        sleep(3)
+        await queueSound(ctx, audio)
         gameStarted = False
         return
     elif gameStarted and cmd == "ei":
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hmm.mp3"))
-        await playSound(ctx, audio)
-        sleep(3)
+        await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hävisit_pelin.mp3"))
-        await playSound(ctx, audio)
-        sleep(3)
+        await queueSound(ctx, audio)
         gameStarted = False
         return
     else:
@@ -175,20 +173,21 @@ async def say(ctx, *args):
                         gst_style=None)
     sf.write('/tmp/say.wav', wav, int(22050*0.9))
     audio = discord.FFmpegPCMAudio('/tmp/say.wav')
-    await playSound(ctx, audio)
+    await queueSound(ctx, audio)
 
 @bot.command(pass_context=True)
 async def setSpeaker(ctx, *args):
     if len(args) != 1:
         log("No argument given to say")
         return
-    
     try:
         voice = int(args[0])
-        if (voice > 96):
-            voice = 96
+        if voice > 96 or voice < 0:
+            voice = 0
         speaker_embedding = multivoice.getSpeaker(voice) # Set speaker
         await ctx.channel.send(f"Voice changed to {voice}")
     except:
         print("Bad input")
+        
+        
 bot.run(TOKEN)
