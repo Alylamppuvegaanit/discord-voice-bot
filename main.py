@@ -14,12 +14,13 @@ load_dotenv()
 TOKEN = os.getenv('TOKEN')
 DIR = os.getcwd()
 LOGFILE = os.path.join(DIR, "log.txt")
-YT_FILE = "/tmp/audio-from-yt.mp4"
 
 bot = commands.Bot(command_prefix="!")
 voiceClient = None
 
 gameStarted = False
+voiceQueue = []
+filenameIndex = 0
 
 # Setup TTS
 import multivoice
@@ -37,34 +38,45 @@ def log(msg):
     logfile.close()
 
 async def disconnect(ctx):
+    voiceQueue = []
     if VoiceClient != None:
         global voiceClient
         log(f"leaving voice on channel {voiceClient.channel} by {ctx.message.author}")
         await voiceClient.disconnect()
         voiceClient = None
 
-async def playSound(ctx):
+def playSound(error=""):
+    global voiceQueue
+    log(str(error))
     if VoiceClient == None:
         log("playSound: no voice channel")
-        await ctx.channel.send("No voice channel")
         return
-    if not voiceClient.is_connected()
+    if not voiceClient.is_connected():
         log("playSound: no voice channel")
-        await ctx.channel.send("No voice channel")
         return
     if len(voiceQueue) == 0:
+        log("queue is empty")
         return
     if voiceClient.is_playing():
+        log("error: already playing sound")
         return
-    voiceClient.play(voiceQueue.pop(0), after=playSound(ctx))
+    log("playing next item from queue")
+    voiceClient.play(voiceQueue.pop(0), after=playSound)
 
-async def queueSound(ctx, audio)
+async def queueSound(ctx, audio):
+    log("adding new audio clip to queue")
     global voiceQueue
     voiceQueue.append(audio)
-    await playSound(ctx)
+    if voiceClient == None:
+        await join(ctx)
+    else:
+        if voiceClient.is_playing():
+            return
+    playSound()
 
 @bot.event
 async def on_ready():
+    print("[BOT READY]")
     log("Started bot")
 
 @bot.command(pass_context=True)
@@ -92,6 +104,7 @@ async def leave(ctx):
 
 @bot.command(pass_context=True)
 async def seven(ctx):
+    log("SEVEN")
     if voiceClient == None:
         await join(ctx)
     audio = discord.FFmpegPCMAudio(os.path.join(DIR, "seiska.wav"))
@@ -99,6 +112,10 @@ async def seven(ctx):
 
 @bot.command(pass_context=True)
 async def play(ctx, *args):
+    global filenameIndex
+    filename = f"file-from-yt-{filenameIndex}"
+    filenameIndex += 1
+    log(f"playing file: {filename}")
     if VoiceClient == None:
         await join(ctx)
     if len(args) == 0:
@@ -108,12 +125,16 @@ async def play(ctx, *args):
         await getWithUrl(args[0])
     else:
         search = ' '.join(args)
-        await getWithSearch(search)
-    if not os.path.isfile(YT_FILE):
-        await ctx.channel.send("No name specified. Quitting...")
+        await getWithSearch(search, filename)
+    if not os.path.isfile(os.path.join("/tmp", filename+".mp4")):
+        await ctx.channel.send("error: File not found")
         return
-    audio = discord.FFmpegPCMAudio(YT_FILE)
+    audio = discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4"))
     await queueSound(ctx, audio)
+
+@bot.command(pass_context=True)
+async def skip(ctx):
+    playSound()
 
 @bot.command(pass_context=True)
 async def villapaitapeli(ctx, *args):
@@ -126,7 +147,7 @@ async def villapaitapeli(ctx, *args):
         await join(ctx)
     cmd = args[0]
     if cmd == "start":
-        log("villapaitapeli started")
+        log("villapaitapeli: started")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "sakarin_villapaitapeli.mp3"))
         await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "pue_sakarille_villapaita.mp3"))
@@ -134,6 +155,7 @@ async def villapaitapeli(ctx, *args):
         gameStarted = True
         return
     elif gameStarted and cmd == "joo":
+        log("villapaitapeli: WIN")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hihihi_kutittaa.mp3"))
         await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "voitit_pelin.mp3"))
@@ -141,6 +163,7 @@ async def villapaitapeli(ctx, *args):
         gameStarted = False
         return
     elif gameStarted and cmd == "ei":
+        log("villapaitapeli: LOSS")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hmm.mp3"))
         await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hävisit_pelin.mp3"))
@@ -148,11 +171,13 @@ async def villapaitapeli(ctx, *args):
         gameStarted = False
         return
     else:
+        log("villapaitapeli: bad args")
         await ctx.channel.send("wrong command. available commands are: start, joo, ei")
         return
 
 @bot.command(pass_context=True)
 async def say(ctx, *args):
+    global filenameIndex
     if voiceClient == None:
         await join(ctx)
     print("Say command")
@@ -160,6 +185,7 @@ async def say(ctx, *args):
         log("No argument given to say")
         return
     sentence = ' '.join(args)
+    log(f"saying {sentence}")
     print("Generating sentence")
     wav = multivoice.tts(model,
                         vocoder_model,
@@ -171,12 +197,14 @@ async def say(ctx, *args):
                         speaker_fileid,
                         speaker_embedding,
                         gst_style=None)
-    sf.write('/tmp/say.wav', wav, int(22050*0.9))
-    audio = discord.FFmpegPCMAudio('/tmp/say.wav')
+    sf.write(f'/tmp/say_{filenameIndex}.wav', wav, int(22050*0.9))
+    audio = discord.FFmpegPCMAudio(f'/tmp/say_{filenameIndex}.wav')
     await queueSound(ctx, audio)
+    filenameIndex += 1
 
 @bot.command(pass_context=True)
 async def setSpeaker(ctx, *args):
+    log("changing speaker")
     if len(args) != 1:
         log("No argument given to say")
         return
@@ -188,6 +216,6 @@ async def setSpeaker(ctx, *args):
         await ctx.channel.send(f"Voice changed to {voice}")
     except:
         print("Bad input")
-        
-        
+
+
 bot.run(TOKEN)

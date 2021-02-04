@@ -4,7 +4,6 @@ from pytube import YouTube
 from bs4 import BeautifulSoup
 
 PATH = "/tmp"
-FILENAME = "audio-from-yt"
 
 
 async def getVideoUrls(searchTerm):
@@ -24,12 +23,12 @@ async def getVideoUrls(searchTerm):
         urls.append('https://www.youtube.com' + vid["href"])
     return urls
 
-def getWithUrl(url):
+def getWithUrl(url, filename):
     # Download audio
     yt = YouTube(url)
-    yt.streams.filter(only_audio=True, file_extension='mp4').first().download(output_path=PATH, filename=FILENAME)
+    yt.streams.filter(only_audio=True, file_extension='mp4').first().download(output_path=PATH, filename=filename)
 
 
-async def getWithSearch(searchTerm):
+async def getWithSearch(searchTerm, filename="audio-from-yt"):
     url = (await getVideoUrls(searchTerm))[0]
-    getWithUrl(url)
+    getWithUrl(url, filename)
