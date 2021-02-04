@@ -38,16 +38,17 @@ def log(msg):
     logfile.close()
 
 async def disconnect(ctx):
+    global voiceClient, voiceQueue
     voiceQueue = []
     if VoiceClient != None:
-        global voiceClient
         log(f"leaving voice on channel {voiceClient.channel} by {ctx.message.author}")
         await voiceClient.disconnect()
         voiceClient = None
 
 def playSound(error=""):
     global voiceQueue
-    log(str(error))
+    if error != "":
+        log(str(error))
     if VoiceClient == None:
         log("playSound: no voice channel")
         return
@@ -112,17 +113,17 @@ async def seven(ctx):
 
 @bot.command(pass_context=True)
 async def play(ctx, *args):
-    global filenameIndex
-    filename = f"file-from-yt-{filenameIndex}"
-    filenameIndex += 1
-    log(f"playing file: {filename}")
     if VoiceClient == None:
         await join(ctx)
     if len(args) == 0:
         await ctx.channel.send("No name specified. Quitting...")
         return
+    global filenameIndex
+    filename = f"file-from-yt-{filenameIndex}"
+    filenameIndex += 1
+    log(f"playing file: {filename}")
     if len(args) == 1 and args[0].startswith("https://www.youtube.com/"):
-        await getWithUrl(args[0])
+        await getWithUrl(args[0], filename)
     else:
         search = ' '.join(args)
         await getWithSearch(search, filename)
@@ -134,7 +135,11 @@ async def play(ctx, *args):
 
 @bot.command(pass_context=True)
 async def skip(ctx):
-    playSound()
+    if VoiceClient == None or len(voiceQueue) == 0:
+        log("unable to skip")
+        return
+    log("skipping...")
+    voiceClient.play(voiceQueue.pop(0), after=playSound)
 
 @bot.command(pass_context=True)
 async def villapaitapeli(ctx, *args):
@@ -180,13 +185,11 @@ async def say(ctx, *args):
     global filenameIndex
     if voiceClient == None:
         await join(ctx)
-    print("Say command")
     if len(args) < 0:
         log("No argument given to say")
         return
     sentence = ' '.join(args)
     log(f"saying {sentence}")
-    print("Generating sentence")
     wav = multivoice.tts(model,
                         vocoder_model,
                         sentence,
@@ -212,6 +215,7 @@ async def setSpeaker(ctx, *args):
         voice = int(args[0])
         if voice > 96 or voice < 0:
             voice = 0
+        global speaker_embedding
         speaker_embedding = multivoice.getSpeaker(voice) # Set speaker
         await ctx.channel.send(f"Voice changed to {voice}")
     except:
