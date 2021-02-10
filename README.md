@@ -6,9 +6,13 @@ INSTALLATION:
 install python dependencies with command
 `pip install -r requirements.txt`
 
-On top of the python dependencies, FFMPEG is required. On ubuntu/debian, it can be installed with
-`sudo apt install ffmpeg`
+OTHER DEPENDENCIES:
 
-For other operating systems and package managers, see [https://ffmpeg.org/](https://ffmpeg.org/)
+- FFMPEG is required for audio playback. On ubuntu/debian, it can be installed with `sudo apt install ffmpeg`. For other operating systems and package managers, see [https://ffmpeg.org/](https://ffmpeg.org/)
+
+- Chromium is required for youtube integration. On ubuntu/debian, it can be installed with `sudo apt install chromium`
+
+
+Text to speech package is installed by running script `setup_multivoice.sh`.
 
 The program also needs to be supplied a valid discord bot token, which should be stored in a file called .env, specidfied by a line `TOKEN=...`
