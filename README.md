@@ -1,5 +1,7 @@
 # discord-voice-bot
 
+This is a simple discord voice bot with main focus on text-to-speech and youtube integration
+
 INSTALLATION:
 install python dependencies with command
 `pip install -r requirements.txt`
@@ -8,3 +10,5 @@ On top of the python dependencies, FFMPEG is required. On ubuntu/debian, it can 
 `sudo apt install ffmpeg`
 
 For other operating systems and package managers, see [https://ffmpeg.org/](https://ffmpeg.org/)
+
+The program also needs to be supplied a valid discord bot token, which should be stored in a file called .env, specidfied by a line `TOKEN=...`
