@@ -26,8 +26,8 @@ filenameIndex = 0
 import multivoice
 import soundfile as sf
 model, vocoder_model, CONFIG, use_cuda, ap, speaker_fileid, speaker_embedding = multivoice.setup() # Load module
-speaker_embedding = multivoice.getSpeaker(4) # Set speaker
-gst_style = {"0": 0, "1": 0, "3": 0, "4": 0} # Use custom gst style
+speaker_embedding = multivoice.getSpeaker(26) # Set speaker
+gst_style = {"0": 0.1, "1": 0.1, "2": 0, "3": -0.1, "4": -0.2} # Use custom gst style
 
 def log(msg):
     if not os.path.isfile(LOGFILE):
