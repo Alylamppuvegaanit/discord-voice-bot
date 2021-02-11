@@ -200,7 +200,7 @@ async def say(ctx, *args):
                         speaker_fileid,
                         speaker_embedding,
                         gst_style=None)
-    sf.write(f'/tmp/say_{filenameIndex}.wav', wav, int(22050*0.9))
+    sf.write(f'/tmp/say_{filenameIndex}.wav', wav, int(22050))
     audio = discord.FFmpegPCMAudio(f'/tmp/say_{filenameIndex}.wav')
     await queueSound(ctx, audio)
     filenameIndex += 1
