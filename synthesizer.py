@@ -1,7 +1,6 @@
 import os
 import torch
 import time
-import sounddevice as sd
 from TTS.utils.generic_utils import setup_model
 from TTS.utils.io import load_config
 from TTS.utils.text.symbols import symbols, phonemes
@@ -80,7 +79,6 @@ def tts(text, model, vocoder_model, speaker_id, CONFIG, use_cuda, ap, use_gl, fi
     print(" > Run-time: {}".format(time.time() - t_1))
     print(" > Real-time factor: {}".format(rtf))
     print(" > Time per step: {}".format(tps))
-    
     return alignment, mel_postnet_spec, stop_tokens, waveform
 
 

@@ -128,12 +128,27 @@ async def play(ctx, *args):
     if not os.path.isfile(os.path.join("/tmp", filename+".mp4")):
         await ctx.channel.send("error: File not found")
         return
-    audio = discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4"))
+    audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4")))
+    audio.volume = 0.3
     await queueSound(ctx, audio)
 
 @bot.command(pass_context=True)
 async def skip(ctx):
-    playSound()
+    voiceClient.source = voiceQueue.pop(0)
+
+@bot.command(pass_context=True)
+async def stop(ctx):
+    global voiceQueue
+    voiceQueue = []
+    voiceClient.stop()
+
+@bot.command(pass_context=True)
+async def pause(ctx):
+    voiceClient.pause()
+
+@bot.command(pass_context=True)
+async def resume(ctx):
+    voiceClient.resume()
 
 @bot.command(pass_context=True)
 async def villapaitapeli(ctx, *args):
