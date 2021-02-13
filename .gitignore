@@ -42,3 +42,7 @@ config.json
 gst-style-example.wav
 speakers.json
 TTS-checkpoint.zip
+config_vocoder.json
+scale_stats.npy
+tts_model.pth.tar
+vocoder_model.pth.tar

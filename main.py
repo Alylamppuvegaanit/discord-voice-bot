@@ -23,11 +23,10 @@ voiceQueue = []
 filenameIndex = 0
 
 # Setup TTS
-import multivoice
+import synthesizer
 import soundfile as sf
-model, vocoder_model, CONFIG, use_cuda, ap, speaker_fileid, speaker_embedding = multivoice.setup() # Load module
-speaker_embedding = multivoice.getSpeaker(4) # Set speaker
-gst_style = {"0": 0, "1": 0, "3": 0, "4": 0} # Use custom gst style
+
+model, vocoder_model, speaker_id, CONFIG, use_cuda, ap = synthesizer.setup()
 
 def log(msg):
     if not os.path.isfile(LOGFILE):
@@ -186,18 +185,21 @@ async def say(ctx, *args):
         return
     sentence = ' '.join(args)
     log(f"saying {sentence}")
-    print("Generating sentence")
-    wav = multivoice.tts(model,
-                        vocoder_model,
-                        sentence,
-                        CONFIG,
-                        use_cuda,
-                        ap,
-                        True,
-                        speaker_fileid,
-                        speaker_embedding,
-                        gst_style=None)
-    sf.write(f'/tmp/say_{filenameIndex}.wav', wav, int(22050*0.9))
+
+    if sentence[-1] != ".":
+        sentence += "."
+    print("Generating sentence:", sentence)
+    align, mel, stops, wav = synthesizer.tts(sentence,
+                                            model,
+                                            vocoder_model,
+                                            speaker_id,
+                                            CONFIG,
+                                            use_cuda,
+                                            ap,
+                                            use_gl=False,
+                                            figures=True)
+
+    sf.write(f'/tmp/say_{filenameIndex}.wav', wav, int(22050*1.0))
     audio = discord.FFmpegPCMAudio(f'/tmp/say_{filenameIndex}.wav')
     await queueSound(ctx, audio)
     filenameIndex += 1
