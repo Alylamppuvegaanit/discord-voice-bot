@@ -13,6 +13,6 @@ OTHER DEPENDENCIES:
 - Chromium is required for youtube integration. On ubuntu/debian, it can be installed with `sudo apt install chromium`
 
 
-Text to speech package is installed by running script `setup_multivoice.sh`.
+Text to speech package is installed by running script `setup.sh`. No setup scripts for windows are provided, but the packages can be manually downloaded.
 
 The program also needs to be supplied a valid discord bot token, which should be stored in a file called .env, specidfied by a line `TOKEN=...`
