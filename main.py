@@ -111,6 +111,7 @@ async def seven(ctx):
 
 @bot.command(pass_context=True)
 async def play(ctx, *args):
+    print(args)
     global filenameIndex
     filename = f"file-from-yt-{filenameIndex}"
     filenameIndex += 1
@@ -121,7 +122,7 @@ async def play(ctx, *args):
         await ctx.channel.send("No name specified. Quitting...")
         return
     if len(args) == 1 and args[0].startswith("https://www.youtube.com/"):
-        await getWithUrl(args[0])
+        getWithUrl(args[0], filename)
     else:
         search = ' '.join(args)
         await getWithSearch(search, filename)
@@ -131,6 +132,17 @@ async def play(ctx, *args):
     audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4")))
     audio.volume = 0.3
     await queueSound(ctx, audio)
+
+@bot.command(pass_context=True)
+async def playlist(ctx, *args):
+    if len(args) == 0:
+        with open(os.path.join(DIR, "playlist.txt"), 'r') as infile:
+            lines = infile.readlines()
+        for line in lines:
+            play(ctx, line.replace('\n', ''))
+    if len(args) > 0 and args[0] == "add":
+        with open(os.path.join(DIR, "playlist.txt"), 'a') as outfile:
+            outfile.write(" ".join(args[1:]))
 
 @bot.command(pass_context=True)
 async def skip(ctx):

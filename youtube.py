@@ -14,7 +14,6 @@ async def getVideoUrls(searchTerm):
 
     # Execute JS
     await response.html.arender(sleep=1)
-    
     soup = BeautifulSoup(response.html.html, "html.parser")
     hits = soup.findAll("a", attrs={"id": "video-title"})
     #hits = soup.findAll(attrs={"class:", "yt-simple-endpoint"})
