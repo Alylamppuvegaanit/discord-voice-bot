@@ -231,20 +231,5 @@ async def say(ctx, *args):
     await queueSound(ctx, audio)
     filenameIndex += 1
 
-@bot.command(pass_context=True)
-async def setSpeaker(ctx, *args):
-    log("changing speaker")
-    if len(args) != 1:
-        log("No argument given to say")
-        return
-    try:
-        voice = int(args[0])
-        if voice > 96 or voice < 0:
-            voice = 0
-        speaker_embedding = multivoice.getSpeaker(voice) # Set speaker
-        await ctx.channel.send(f"Voice changed to {voice}")
-    except:
-        print("Bad input")
-
 
 bot.run(TOKEN)
