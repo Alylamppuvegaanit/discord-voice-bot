@@ -19,8 +19,11 @@ bot = commands.Bot(command_prefix="!")
 voiceClient = None
 
 gameStarted = False
+playList = []
 voiceQueue = []
 filenameIndex = 0
+
+CTX = None # This is spaghetti required to make things work, don't delete :-)
 
 # Setup TTS
 import synthesizer
@@ -45,7 +48,7 @@ async def disconnect(ctx):
         voiceClient = None
 
 def playSound(error=""):
-    global voiceQueue
+    global voiceQueue, playList, CTX
     log(str(error))
     if VoiceClient == None:
         log("playSound: no voice channel")
@@ -54,8 +57,12 @@ def playSound(error=""):
         log("playSound: no voice channel")
         return
     if len(voiceQueue) == 0:
-        log("queue is empty")
-        return
+        if len(playList) == 0:
+            log("queue is empty")
+            return
+        else:
+            asyncio.create_task(play(CTX, playList.pop(0)))
+            return
     if voiceClient.is_playing():
         log("error: already playing sound")
         return
@@ -135,17 +142,48 @@ async def play(ctx, *args):
 
 @bot.command(pass_context=True)
 async def playlist(ctx, *args):
+    global CTX
+    CTX = ctx
     if len(args) == 0:
-        with open(os.path.join(DIR, "playlist.txt"), 'r') as infile:
+        ctx.channel.send("no arguments given. valid arguments: play, add")
+        return
+    if args[0] == "play"
+        name = ""
+        if len(args) > 1:
+            name = '_'.join(args[1:])
+        global playList
+        with open(os.path.join(DIR, "playlists", f"playlist{name}.txt"), 'r') as infile:
             lines = infile.readlines()
         for line in lines:
-            play(ctx, line.replace('\n', ''))
-    if len(args) > 0 and args[0] == "add":
-        with open(os.path.join(DIR, "playlist.txt"), 'a') as outfile:
-            outfile.write(" ".join(args[1:]))
+            tmp = line.rstrip('\n')
+            if tmp == "":
+                continue
+            playList.append(tmp)
+        if voiceClient == None:
+            await join(ctx)
+        playSound()
+    if args[0] == "add" and len(args) >= 2:
+        name = ""
+        start = 1
+        if args[1] == "-l":
+            if len(args) < 4:
+                name = args[2]
+                start = 3
+            else:
+                ctx.channel.send("not enough arguments for `-l`"
+                return
+        with open(os.path.join(DIR, "playlists", f"playlist{name}.txt"), 'a') as outfile:
+            outfile.write(" ".join(args[start:]))
 
 @bot.command(pass_context=True)
 async def skip(ctx):
+    global voiceQueue, playList
+    if len(voiceQueue) == 0:
+        if len(playList) == 0:
+            await ctx.channel.send("Queue is empty")
+            return
+        else:
+            await play(ctx, playList.pop(0))
     voiceClient.source = voiceQueue.pop(0)
 
 @bot.command(pass_context=True)

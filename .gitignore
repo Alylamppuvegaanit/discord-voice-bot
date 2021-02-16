@@ -33,7 +33,7 @@ venv/
 ENV/
 
 log.txt
-
+playlist/*
 
 # TTS stuff
 TTS/
