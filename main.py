@@ -49,7 +49,8 @@ async def disconnect(ctx):
 
 def playSound(error=""):
     global voiceQueue, playList, CTX
-    log(str(error))
+    if error != "":
+        log(str(error))
     if VoiceClient == None:
         log("playSound: no voice channel")
         return
@@ -147,7 +148,7 @@ async def playlist(ctx, *args):
     if len(args) == 0:
         ctx.channel.send("no arguments given. valid arguments: play, add")
         return
-    if args[0] == "play"
+    if args[0] == "play":
         name = ""
         if len(args) > 1:
             name = '_'.join(args[1:])
@@ -170,7 +171,7 @@ async def playlist(ctx, *args):
                 name = args[2]
                 start = 3
             else:
-                ctx.channel.send("not enough arguments for `-l`"
+                ctx.channel.send("not enough arguments for `-l`")
                 return
         with open(os.path.join(DIR, "playlists", f"playlist{name}.txt"), 'a') as outfile:
             outfile.write(" ".join(args[start:]))
