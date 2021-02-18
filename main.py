@@ -146,13 +146,17 @@ async def playlist(ctx, *args):
     global CTX
     CTX = ctx
     if len(args) == 0:
-        ctx.channel.send("no arguments given. valid arguments: play, add")
+        await ctx.channel.send("no arguments given. valid arguments: play, add")
         return
     if args[0] == "play":
         name = ""
         if len(args) > 1:
             name = '_'.join(args[1:])
         global playList
+        filename = os.path.join(DIR, "playlists", f"playlist{name}.txt")
+        if not os.path.exists(filename):
+            await ctx.channel.send("playlist not found")
+            return
         with open(os.path.join(DIR, "playlists", f"playlist{name}.txt"), 'r') as infile:
             lines = infile.readlines()
         for line in lines:
@@ -167,14 +171,19 @@ async def playlist(ctx, *args):
         name = ""
         start = 1
         if args[1] == "-l":
-            if len(args) < 4:
+            if len(args) >= 4:
                 name = args[2]
                 start = 3
             else:
-                ctx.channel.send("not enough arguments for `-l`")
+                await ctx.channel.send("not enough arguments for `-l`")
                 return
-        with open(os.path.join(DIR, "playlists", f"playlist{name}.txt"), 'a') as outfile:
-            outfile.write(" ".join(args[start:]))
+        filename = os.path.join(DIR, "playlists", f"playlist{name}.txt")
+        if os.path.exists(filename):
+            outfile = open(filename, 'a')
+        else:
+            outfile = open(filename, 'w')
+        outfile.write(" ".join(args[start:]))
+        outfile.close()
 
 @bot.command(pass_context=True)
 async def skip(ctx):
