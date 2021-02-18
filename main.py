@@ -2,6 +2,7 @@ import os
 import datetime
 import asyncio
 from time import sleep
+import random
 
 from dotenv import load_dotenv
 import discord
@@ -40,7 +41,9 @@ def log(msg):
     logfile.close()
 
 async def disconnect(ctx):
+    global voiceQueue, playList
     voiceQueue = []
+    playList = []
     if VoiceClient != None:
         global voiceClient
         log(f"leaving voice on channel {voiceClient.channel} by {ctx.message.author}")
@@ -57,13 +60,11 @@ def playSound(error=""):
     if not voiceClient.is_connected():
         log("playSound: no voice channel")
         return
+    if len(voiceQueue) < 3 and len(playList) > 0:
+        asyncio.create_task(play(CTX, playList.pop(0)))
     if len(voiceQueue) == 0:
-        if len(playList) == 0:
-            log("queue is empty")
-            return
-        else:
-            asyncio.create_task(play(CTX, playList.pop(0)))
-            return
+        log("queue is empty")
+        return
     if voiceClient.is_playing():
         log("error: already playing sound")
         return
@@ -143,16 +144,20 @@ async def play(ctx, *args):
 
 @bot.command(pass_context=True)
 async def playlist(ctx, *args):
-    global CTX
+    global CTX, playList
     CTX = ctx
     if len(args) == 0:
         await ctx.channel.send("no arguments given. valid arguments: play, add")
         return
     if args[0] == "play":
         name = ""
-        if len(args) > 1:
-            name = '_'.join(args[1:])
-        global playList
+        shuffle = False
+        if len(args) == 3:
+            if args[1] == "-s":
+                shuffle = True
+                name = args[2]
+        elif len(args) == 2:
+            name = args[1]
         filename = os.path.join(DIR, "playlists", f"playlist{name}.txt")
         if not os.path.exists(filename):
             await ctx.channel.send("playlist not found")
@@ -164,6 +169,8 @@ async def playlist(ctx, *args):
             if tmp == "":
                 continue
             playList.append(tmp)
+        if shuffle:
+            random.shuffle(playList)
         if voiceClient == None:
             await join(ctx)
         playSound()
@@ -182,18 +189,18 @@ async def playlist(ctx, *args):
             outfile = open(filename, 'a')
         else:
             outfile = open(filename, 'w')
-        outfile.write(" ".join(args[start:]))
+        outfile.write(" ".join(args[start:]) + '\n')
         outfile.close()
 
 @bot.command(pass_context=True)
 async def skip(ctx):
     global voiceQueue, playList
+    if len(voiceQueue) < 3 and len(playList) > 0:
+        await play(ctx, playList.pop(0))
     if len(voiceQueue) == 0:
         if len(playList) == 0:
             await ctx.channel.send("Queue is empty")
             return
-        else:
-            await play(ctx, playList.pop(0))
     voiceClient.source = voiceQueue.pop(0)
 
 @bot.command(pass_context=True)
