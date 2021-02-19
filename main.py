@@ -137,7 +137,7 @@ async def seven(ctx):
     log("SEVEN")
     if voiceClient == None:
         await join(ctx)
-    audio = discord.FFmpegPCMAudio(os.path.join(DIR, "seiska.wav"))
+    audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "seiska.wav"))
     await queueSound(ctx, audio)
 
 @bot.command(pass_context=True)
@@ -264,25 +264,25 @@ async def villapaitapeli(ctx, *args):
     cmd = args[0]
     if cmd == "start":
         log("villapaitapeli: started")
-        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "sakarin_villapaitapeli.mp3"))
+        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "sakarin_villapaitapeli.mp3"))
         await queueSound(ctx, audio)
-        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "pue_sakarille_villapaita.mp3"))
+        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "pue_sakarille_villapaita.mp3"))
         await queueSound(ctx, audio)
         gameStarted = True
         return
     elif gameStarted and cmd == "joo":
         log("villapaitapeli: WIN")
-        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hihihi_kutittaa.mp3"))
+        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hihihi_kutittaa.mp3"))
         await queueSound(ctx, audio)
-        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "voitit_pelin.mp3"))
+        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "voitit_pelin.mp3"))
         await queueSound(ctx, audio)
         gameStarted = False
         return
     elif gameStarted and cmd == "ei":
         log("villapaitapeli: LOSS")
-        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hmm.mp3"))
+        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hmm.mp3"))
         await queueSound(ctx, audio)
-        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "villapaitapeli", "hävisit_pelin.mp3"))
+        audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hävisit_pelin.mp3"))
         await queueSound(ctx, audio)
         gameStarted = False
         return
