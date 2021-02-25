@@ -20,6 +20,8 @@ bot = commands.Bot(command_prefix="!")
 voiceClient = None
 
 gameStarted = False
+repeatFile = ""
+repCount = 0
 playList = []
 voiceQueue = []
 filenameIndex = 0
@@ -71,6 +73,26 @@ def playSound(error=""):
     log("playing next item from queue")
     voiceClient.play(voiceQueue.pop(0), after=playSound)
 
+def repeat(error=""):
+    global voiceQueue, CTX
+    if error != "":
+        log(str(error))
+    if VoiceClient == None:
+        log("playSound: no voice channel")
+        return
+    if not voiceClient.is_connected():
+        log("playSound: no voice channel")
+        return
+    if voiceClient.is_playing():
+        log("error: already playing sound")
+        return
+    if repeatFile == "":
+        log("stopped repeating")
+        return
+    audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(repeatFile))
+    audio.volume = 0.3
+    voiceClient.play(audio, after=repeat)
+
 async def queueSound(ctx, audio):
     log("adding new audio clip to queue")
     global voiceQueue
@@ -120,27 +142,38 @@ async def seven(ctx):
 
 @bot.command(pass_context=True)
 async def play(ctx, *args):
-    print(args)
     global filenameIndex
     filename = f"file-from-yt-{filenameIndex}"
     filenameIndex += 1
     log(f"playing file: {filename}")
+    rep = False
     if VoiceClient == None:
         await join(ctx)
     if len(args) == 0:
         await ctx.channel.send("No name specified. Quitting...")
         return
-    if len(args) == 1 and args[0].startswith("https://www.youtube.com/"):
-        getWithUrl(args[0], filename)
+    if args[0] == "-r":
+        rep = True
+    if args[-1].startswith("https://www.youtube.com/"):
+        getWithUrl(args[-1], filename)
     else:
-        search = ' '.join(args)
+        if rep:
+            search = ' '.join(args[1:])
+        else:
+            search = ' '.join(args)
         await getWithSearch(search, filename)
     if not os.path.isfile(os.path.join("/tmp", filename+".mp4")):
         await ctx.channel.send("error: File not found")
         return
-    audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4")))
-    audio.volume = 0.3
-    await queueSound(ctx, audio)
+    if rep:
+        global repeatFile
+        repeatFile = os.path.join("/tmp", filename+".mp4")
+        repeat()
+    else:
+        audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4")))
+        audio.volume = 0.3
+        await queueSound(ctx, audio, rep)
+
 
 @bot.command(pass_context=True)
 async def playlist(ctx, *args):
@@ -194,7 +227,8 @@ async def playlist(ctx, *args):
 
 @bot.command(pass_context=True)
 async def skip(ctx):
-    global voiceQueue, playList
+    global voiceQueue, playList, repeatFile
+    repeatFile = ""
     if len(voiceQueue) < 3 and len(playList) > 0:
         await play(ctx, playList.pop(0))
     if len(voiceQueue) == 0:
@@ -205,7 +239,8 @@ async def skip(ctx):
 
 @bot.command(pass_context=True)
 async def stop(ctx):
-    global voiceQueue
+    global voiceQueue, repeatFile
+    repeatFile = ""
     voiceQueue = []
     voiceClient.stop()
 
