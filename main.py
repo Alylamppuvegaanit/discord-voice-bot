@@ -99,9 +99,6 @@ async def queueSound(ctx, audio):
     voiceQueue.append(audio)
     if voiceClient == None:
         await join(ctx)
-    else:
-        if voiceClient.is_playing():
-            return
     playSound()
 
 @bot.event
@@ -172,7 +169,7 @@ async def play(ctx, *args):
     else:
         audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4")))
         audio.volume = 0.3
-        await queueSound(ctx, audio, rep)
+        await queueSound(ctx, audio)
 
 
 @bot.command(pass_context=True)
@@ -321,5 +318,11 @@ async def say(ctx, *args):
     await queueSound(ctx, audio)
     filenameIndex += 1
 
+@bot.event
+async def on_message(ctx):
+    if ctx.content.startswith("!help"):
+        with open(os.path.join(DIR, "help.txt"), 'r') as infile:
+            text = "```\n" + infile.read() + "\n```"
+        await ctx.channel.send(text)
 
 bot.run(TOKEN)

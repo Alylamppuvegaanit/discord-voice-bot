@@ -1,0 +1,15 @@
+help: displays this menu
+join: Joins the voice channel. User giving the command must be on a voice channel
+leave: Leaves the voice channel
+pause: Pauses the playback. Can be resumed with "resume"
+play: Plays a video from youtube. can also be an url. 
+  - r as the first argument will attempt to repeat the clip forever
+playlist:
+  - play: plays the given playlist. If no name is specified, plays the default playlist. -s as the first argument will shuffle the order
+  - add: adds the given track to playlist. playlist name can be specified with argument -l <NAME>. 
+resume: Resumes audio playback, if paused by "pause"
+say: Tries to convert given text to speech and play it
+seven: SEITSEMÄN
+skip: Skips the current audio track and attempts to play the next one
+stop: Stops audio playback and clears the queue
+villapaitapeli: a game of legendary "Sakarin villapaitapeli"
