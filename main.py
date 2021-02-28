@@ -10,6 +10,7 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from discord.voice_client import VoiceClient
 from youtube import getWithSearch, getWithUrl
+
 load_dotenv()
 
 TOKEN = os.getenv('TOKEN')
@@ -17,15 +18,14 @@ DIR = os.getcwd()
 LOGFILE = os.path.join(DIR, "log.txt")
 
 bot = commands.Bot(command_prefix="!")
-voiceClient = None
 
+voiceClient = None
 gameStarted = False
 repeatFile = ""
 repCount = 0
 playList = []
 voiceQueue = []
 filenameIndex = 0
-
 CTX = None # This is spaghetti required to make things work, don't delete :-)
 
 # Setup TTS
@@ -42,60 +42,74 @@ def log(msg):
     logfile.write(f"{datetime.datetime.today().strftime('[%Y-%m-%d %H:%M]')}: {msg}\n")
     logfile.close()
 
-async def disconnect(ctx):
-    global voiceQueue, playList
+def reset():
+    global voiceQueue, playList, repeatFile
+    repeatFile = ""
     voiceQueue = []
     playList = []
+
+def checkVoiceClient():
+    if VoiceClient == None or str(type(voiceClient)) != "<class 'discord.voice_client.VoiceClient'>":
+        return False
+    if not voiceClient.is_connected():
+        return False
+    return True
+
+
+async def disconnect(ctx):
+    reset()
     if VoiceClient != None:
         global voiceClient
-        log(f"leaving voice on channel {voiceClient.channel} by {ctx.message.author}")
-        await voiceClient.disconnect()
+        if checkVoiceClient():
+            await voiceClient.disconnect()
         voiceClient = None
 
 def playSound(error=""):
     global voiceQueue, playList, CTX
-    if error != "":
-        log(str(error))
-    if VoiceClient == None:
-        log("playSound: no voice channel")
+    try:
+        if error != "":
+            print(f"error: {str(error)}")
+            log(str(error))
+        if not checkVoiceClient():
+            return
+        if len(voiceQueue) < 3 and len(playList) > 0:
+            asyncio.create_task(play(CTX, playList.pop(0)))
+        if len(voiceQueue) == 0:
+            log("queue is empty")
+            return
+        if voiceClient.is_playing():
+            return
+    except Exception as e:
+        log(str(e))
         return
-    if not voiceClient.is_connected():
-        log("playSound: no voice channel")
-        return
-    if len(voiceQueue) < 3 and len(playList) > 0:
-        asyncio.create_task(play(CTX, playList.pop(0)))
-    if len(voiceQueue) == 0:
-        log("queue is empty")
-        return
-    if voiceClient.is_playing():
-        log("error: already playing sound")
-        return
-    log("playing next item from queue")
     voiceClient.play(voiceQueue.pop(0), after=playSound)
 
 def repeat(error=""):
     global voiceQueue, CTX
-    if error != "":
-        log(str(error))
-    if VoiceClient == None:
-        log("playSound: no voice channel")
+    try:
+        if error != "":
+            log(str(error))
+        if not checkVoiceClient():
+            return
+        if voiceClient.is_playing():
+            log("error: already playing sound")
+            return
+        if repeatFile == "":
+            print("no repeatfile, stopping")
+            log("stopped repeating")
+            return
+        audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(repeatFile))
+        audio.volume = 0.3
+    except Exception as e:
+        print(e)
+        log(str(e))
         return
-    if not voiceClient.is_connected():
-        log("playSound: no voice channel")
-        return
-    if voiceClient.is_playing():
-        log("error: already playing sound")
-        return
-    if repeatFile == "":
-        log("stopped repeating")
-        return
-    audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(repeatFile))
-    audio.volume = 0.3
     voiceClient.play(audio, after=repeat)
 
 async def queueSound(ctx, audio):
     log("adding new audio clip to queue")
     global voiceQueue
+    print("adding to queue")
     voiceQueue.append(audio)
     if voiceClient == None:
         await join(ctx)
@@ -116,7 +130,7 @@ async def join(ctx):
             await ctx.channel.send("No voice channel found!")
             return
         global voiceClient
-        if voiceClient != None:
+        if checkVoiceClient():
             disconnect(ctx)
         voiceClient = await channel.connect()
     except Exception as e:
@@ -142,11 +156,12 @@ async def play(ctx, *args):
     global filenameIndex
     filename = f"file-from-yt-{filenameIndex}"
     filenameIndex += 1
-    log(f"playing file: {filename}")
+    print(f"playing file: {filename}")
     rep = False
     if VoiceClient == None:
         await join(ctx)
     if len(args) == 0:
+        print("no args")
         await ctx.channel.send("No name specified. Quitting...")
         return
     if args[0] == "-r":
@@ -158,16 +173,22 @@ async def play(ctx, *args):
             search = ' '.join(args[1:])
         else:
             search = ' '.join(args)
+        print(f"searching {search}")
         await getWithSearch(search, filename)
-    if not os.path.isfile(os.path.join("/tmp", filename+".mp4")):
+    audioFile = os.path.join("/tmp", filename+".mp4")
+    if not os.path.isfile(audioFile):
+        log(f"file not found: {audioFile}")
         await ctx.channel.send("error: File not found")
         return
     if rep:
+        await stop(ctx)
+        if voiceClient == None:
+            await join(ctx)
         global repeatFile
-        repeatFile = os.path.join("/tmp", filename+".mp4")
+        repeatFile = audioFile
         repeat()
     else:
-        audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(os.path.join("/tmp", filename+".mp4")))
+        audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audioFile))
         audio.volume = 0.3
         await queueSound(ctx, audio)
 
@@ -176,11 +197,11 @@ async def play(ctx, *args):
 async def playlist(ctx, *args):
     global CTX, playList
     CTX = ctx
+    name = ""
     if len(args) == 0:
         await ctx.channel.send("no arguments given. valid arguments: play, add")
         return
     if args[0] == "play":
-        name = ""
         shuffle = False
         if len(args) == 3:
             if args[1] == "-s":
@@ -188,11 +209,14 @@ async def playlist(ctx, *args):
                 name = args[2]
         elif len(args) == 2:
             name = args[1]
+        else:
+            ctx.channel.send("bad arguments")
+            return
         filename = os.path.join(DIR, "playlists", f"playlist{name}.txt")
         if not os.path.exists(filename):
             await ctx.channel.send("playlist not found")
             return
-        with open(os.path.join(DIR, "playlists", f"playlist{name}.txt"), 'r') as infile:
+        with open(filename, 'r') as infile:
             lines = infile.readlines()
         for line in lines:
             tmp = line.rstrip('\n')
@@ -204,8 +228,7 @@ async def playlist(ctx, *args):
         if voiceClient == None:
             await join(ctx)
         playSound()
-    if args[0] == "add" and len(args) >= 2:
-        name = ""
+    elif args[0] == "add" and len(args) >= 2:
         start = 1
         if args[1] == "-l":
             if len(args) >= 4:
@@ -221,10 +244,14 @@ async def playlist(ctx, *args):
             outfile = open(filename, 'w')
         outfile.write(" ".join(args[start:]) + '\n')
         outfile.close()
+    else:
+        ctx.channel.send("invalid argument. Valid arguments are: play, add")
 
 @bot.command(pass_context=True)
 async def skip(ctx):
     global voiceQueue, playList, repeatFile
+    if voiceClient == None:
+        return
     repeatFile = ""
     if len(voiceQueue) < 3 and len(playList) > 0:
         await play(ctx, playList.pop(0))
@@ -236,31 +263,30 @@ async def skip(ctx):
 
 @bot.command(pass_context=True)
 async def stop(ctx):
-    global voiceQueue, repeatFile
-    repeatFile = ""
-    voiceQueue = []
-    voiceClient.stop()
+    reset()
+    if voiceClient != None:
+        voiceClient.stop()
 
 @bot.command(pass_context=True)
 async def pause(ctx):
-    voiceClient.pause()
+    if voiceClient != None:
+        voiceClient.pause()
 
 @bot.command(pass_context=True)
 async def resume(ctx):
-    voiceClient.resume()
+    if voiceClient != None:
+        voiceClient.resume()
 
 @bot.command(pass_context=True)
 async def villapaitapeli(ctx, *args):
     global gameStarted
     if len(args) != 1:
-        log("villapaitapeli: bad arguments")
         await ctx.channel.send("Sakarin villapaitapeli: use argument 'start' to start the game. Use arguments 'joo' or 'ei' to answer the question. This requires the player to be on a voice channel")
         return
     if VoiceClient == None:
         await join(ctx)
     cmd = args[0]
     if cmd == "start":
-        log("villapaitapeli: started")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "sakarin_villapaitapeli.mp3"))
         await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "pue_sakarille_villapaita.mp3"))
@@ -268,7 +294,6 @@ async def villapaitapeli(ctx, *args):
         gameStarted = True
         return
     elif gameStarted and cmd == "joo":
-        log("villapaitapeli: WIN")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hihihi_kutittaa.mp3"))
         await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "voitit_pelin.mp3"))
@@ -276,7 +301,6 @@ async def villapaitapeli(ctx, *args):
         gameStarted = False
         return
     elif gameStarted and cmd == "ei":
-        log("villapaitapeli: LOSS")
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hmm.mp3"))
         await queueSound(ctx, audio)
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hävisit_pelin.mp3"))
@@ -284,7 +308,6 @@ async def villapaitapeli(ctx, *args):
         gameStarted = False
         return
     else:
-        log("villapaitapeli: bad args")
         await ctx.channel.send("wrong command. available commands are: start, joo, ei")
         return
 
@@ -299,10 +322,9 @@ async def say(ctx, *args):
         return
     sentence = ' '.join(args)
     log(f"saying {sentence}")
-
     if sentence[-1] != ".":
         sentence += "."
-    print("Generating sentence:", sentence)
+    log(f"Generating sentence: {sentence}")
     align, mel, stops, wav = synthesizer.tts(sentence,
                                             model,
                                             vocoder_model,
@@ -318,11 +340,13 @@ async def say(ctx, *args):
     await queueSound(ctx, audio)
     filenameIndex += 1
 
-@bot.event
-async def on_message(ctx):
-    if ctx.content.startswith("!help"):
+class helpCommand(commands.MinimalHelpCommand):
+    async def send_pages(self):
+        destination = self.get_destination()
         with open(os.path.join(DIR, "help.txt"), 'r') as infile:
             text = "```\n" + infile.read() + "\n```"
-        await ctx.channel.send(text)
+        await destination.send(text)
+
+bot.help_command = helpCommand()
 
 bot.run(TOKEN)
