@@ -3,6 +3,7 @@ import datetime
 import asyncio
 from time import sleep
 import random
+import json
 
 from dotenv import load_dotenv
 import discord
@@ -13,9 +14,11 @@ from youtube import getWithSearch, getWithUrl
 
 load_dotenv()
 
+PLAYLISTFILE = "/home/roope/dev/discord-voice-bot-web/data/playlists.json"
 TOKEN = os.getenv('TOKEN')
 DIR = os.getcwd()
 LOGFILE = os.path.join(DIR, "log.txt")
+
 
 bot = commands.Bot(command_prefix="!")
 
@@ -54,15 +57,6 @@ def checkVoiceClient():
     if not voiceClient.is_connected():
         return False
     return True
-
-
-async def disconnect(ctx):
-    reset()
-    if VoiceClient != None:
-        global voiceClient
-        if checkVoiceClient():
-            await voiceClient.disconnect()
-        voiceClient = None
 
 def playSound(error=""):
     global voiceQueue, playList, CTX
@@ -106,6 +100,14 @@ def repeat(error=""):
         return
     voiceClient.play(audio, after=repeat)
 
+async def disconnect(ctx):
+    reset()
+    if VoiceClient != None:
+        global voiceClient
+        if checkVoiceClient():
+            await voiceClient.disconnect()
+        voiceClient = None
+
 async def queueSound(ctx, audio):
     log("adding new audio clip to queue")
     global voiceQueue
@@ -114,11 +116,6 @@ async def queueSound(ctx, audio):
     if voiceClient == None:
         await join(ctx)
     playSound()
-
-@bot.event
-async def on_ready():
-    print("[BOT READY]")
-    log("Started bot")
 
 @bot.command(pass_context=True)
 async def join(ctx):
@@ -144,14 +141,6 @@ async def leave(ctx):
     await disconnect(ctx)
 
 @bot.command(pass_context=True)
-async def seven(ctx):
-    log("SEVEN")
-    if voiceClient == None:
-        await join(ctx)
-    audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "seiska.wav"))
-    await queueSound(ctx, audio)
-
-@bot.command(pass_context=True)
 async def play(ctx, *args):
     global filenameIndex
     filename = f"file-from-yt-{filenameIndex}"
@@ -167,7 +156,11 @@ async def play(ctx, *args):
     if args[0] == "-r":
         rep = True
     if args[-1].startswith("https://www.youtube.com/"):
-        getWithUrl(args[-1], filename)
+        try:
+            getWithUrl(args[-1], filename)
+        except:
+            ctx.channel.send("bad video url")
+            return
     else:
         if rep:
             search = ' '.join(args[1:])
@@ -198,54 +191,30 @@ async def playlist(ctx, *args):
     global CTX, playList
     CTX = ctx
     name = ""
+    shuffle = False
     if len(args) == 0:
         await ctx.channel.send("no arguments given. valid arguments: play, add")
         return
-    if args[0] == "play":
-        shuffle = False
-        if len(args) == 3:
-            if args[1] == "-s":
-                shuffle = True
-                name = args[2]
-        elif len(args) == 2:
-            name = args[1]
-        else:
-            ctx.channel.send("bad arguments")
-            return
-        filename = os.path.join(DIR, "playlists", f"playlist{name}.txt")
-        if not os.path.exists(filename):
-            await ctx.channel.send("playlist not found")
-            return
-        with open(filename, 'r') as infile:
-            lines = infile.readlines()
-        for line in lines:
-            tmp = line.rstrip('\n')
-            if tmp == "":
-                continue
-            playList.append(tmp)
-        if shuffle:
-            random.shuffle(playList)
-        if voiceClient == None:
-            await join(ctx)
-        playSound()
-    elif args[0] == "add" and len(args) >= 2:
-        start = 1
-        if args[1] == "-l":
-            if len(args) >= 4:
-                name = args[2]
-                start = 3
-            else:
-                await ctx.channel.send("not enough arguments for `-l`")
-                return
-        filename = os.path.join(DIR, "playlists", f"playlist{name}.txt")
-        if os.path.exists(filename):
-            outfile = open(filename, 'a')
-        else:
-            outfile = open(filename, 'w')
-        outfile.write(" ".join(args[start:]) + '\n')
-        outfile.close()
+    if args[0] == "-s":
+        shuffle = True
+        name = ' '.join(args[1:])
     else:
-        ctx.channel.send("invalid argument. Valid arguments are: play, add")
+        name = ' '.join(args[0:])
+    with open(PLAYLISTFILE, 'r') as infile:
+        data = infile.read()
+    data = json.loads(data)
+    for a in data:
+        if a['id'] == name:
+            for b in a['songs']:
+                playList.append(b['title'])
+    if playList == []:
+        await ctx.channel.send(f"playlist '{name}' not found, empty playlist")
+        return
+    if shuffle:
+        random.shuffle(playList)
+    if voiceClient == None:
+        await join(ctx)
+    playSound()
 
 @bot.command(pass_context=True)
 async def skip(ctx):
@@ -339,6 +308,19 @@ async def say(ctx, *args):
     audio = discord.FFmpegPCMAudio(f'/tmp/say_{filenameIndex}.wav')
     await queueSound(ctx, audio)
     filenameIndex += 1
+
+@bot.command(pass_context=True)
+async def seven(ctx):
+    log("SEVEN")
+    if voiceClient == None:
+        await join(ctx)
+    audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "seiska.wav"))
+    await queueSound(ctx, audio)
+
+@bot.event
+async def on_ready():
+    print("[BOT READY]")
+    log("Started bot")
 
 class helpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
