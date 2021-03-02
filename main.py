@@ -29,6 +29,7 @@ repCount = 0
 playList = []
 voiceQueue = []
 filenameIndex = 0
+TASKS = []
 CTX = None # This is spaghetti required to make things work, don't delete :-)
 
 # Setup TTS
@@ -59,23 +60,29 @@ def checkVoiceClient():
     return True
 
 def playSound(error=""):
-    global voiceQueue, playList, CTX
+    global voiceQueue, playList, CTX, TASKS
     try:
         if error != "":
             print(f"error: {str(error)}")
             log(str(error))
         if not checkVoiceClient():
+            print("playSound: checkVoiceClient failed")
             return
-        if len(voiceQueue) < 3 and len(playList) > 0:
-            asyncio.create_task(play(CTX, playList.pop(0)))
+        while len(voiceQueue) < 3 and len(playList) > 0:
+            print(f"playSound: adding {playList[0]} to queue")
+            playWithUrl(playList.pop(0))
         if len(voiceQueue) == 0:
+            print("queue is empty")
             log("queue is empty")
             return
         if voiceClient.is_playing():
+            print("voiceClient already playing")
             return
     except Exception as e:
         log(str(e))
+        print(f"playSound: error '{str(e)}'")
         return
+    print("playing next item from queue")
     voiceClient.play(voiceQueue.pop(0), after=playSound)
 
 def repeat(error=""):
@@ -142,11 +149,14 @@ async def leave(ctx):
 
 @bot.command(pass_context=True)
 async def play(ctx, *args):
-    global filenameIndex
-    filename = f"file-from-yt-{filenameIndex}"
-    filenameIndex += 1
-    print(f"playing file: {filename}")
+    global TASKS
     rep = False
+    while len(TASKS) != 0:
+        try:
+            await TASKS[0]
+        except:
+            break
+        TASKS.pop(0)
     if VoiceClient == None:
         await join(ctx)
     if len(args) == 0:
@@ -156,18 +166,46 @@ async def play(ctx, *args):
     if args[0] == "-r":
         rep = True
     if args[-1].startswith("https://www.youtube.com/"):
-        try:
-            getWithUrl(args[-1], filename)
-        except:
-            ctx.channel.send("bad video url")
-            return
+        playWithUrl(args[-1], rep)
     else:
         if rep:
             search = ' '.join(args[1:])
         else:
             search = ' '.join(args)
-        print(f"searching {search}")
-        await getWithSearch(search, filename)
+        await playWithName(ctx, search, rep)
+
+def playWithUrl(url, rep=False):
+    global filenameIndex, voiceQueue, repeatFile
+    filename = f"file-from-yt-{filenameIndex}"
+    filenameIndex += 1
+    print(f"getWithUrl({url}, {filename})")
+    try:
+        getWithUrl(url, filename)
+    except:
+        print("bad video url")
+        return
+    audioFile = os.path.join("/tmp", filename+".mp4")
+    if not os.path.isfile(audioFile):
+        print(f"file not found: {audioFile}")
+        log(f"file not found: {audioFile}")
+        return
+    if rep:
+        print("playWithUrl: repeat")
+        repeatFile = audioFile
+        repeat()
+    else:
+        audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audioFile))
+        audio.volume = 0.3
+        log("adding new audio clip to queue") 
+        voiceQueue.append(audio)
+        playSound()
+
+async def playWithName(ctx, search, rep=False):
+    global filenameIndex, voiceQueue, repeatFile
+    filename = f"file-from-yt-{filenameIndex}"
+    filenameIndex += 1
+    print(f"getWithSearch({search}, {filename})")
+    await getWithSearch(search, filename)
     audioFile = os.path.join("/tmp", filename+".mp4")
     if not os.path.isfile(audioFile):
         log(f"file not found: {audioFile}")
@@ -185,7 +223,6 @@ async def play(ctx, *args):
         audio.volume = 0.3
         await queueSound(ctx, audio)
 
-
 @bot.command(pass_context=True)
 async def playlist(ctx, *args):
     global CTX, playList
@@ -193,13 +230,16 @@ async def playlist(ctx, *args):
     name = ""
     shuffle = False
     if len(args) == 0:
+        print("playlist: no args")
         await ctx.channel.send("no arguments given. valid arguments: play, add")
         return
     if args[0] == "-s":
+        print("shuffle enabled")
         shuffle = True
         name = ' '.join(args[1:])
     else:
         name = ' '.join(args[0:])
+    print(f"playlist {name}")
     with open(PLAYLISTFILE, 'r') as infile:
         data = infile.read()
     data = json.loads(data)
@@ -208,6 +248,7 @@ async def playlist(ctx, *args):
             for b in a['songs']:
                 playList.append(b['title'])
     if playList == []:
+        print("playlist not found")
         await ctx.channel.send(f"playlist '{name}' not found, empty playlist")
         return
     if shuffle:
