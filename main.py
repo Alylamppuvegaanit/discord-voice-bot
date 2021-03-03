@@ -10,7 +10,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
 from discord.voice_client import VoiceClient
-from youtube import getWithSearch, getWithUrl
+from youtube import getWithSearch, getWithUrl, getVideoUrls
 
 load_dotenv()
 
@@ -243,10 +243,28 @@ async def playlist(ctx, *args):
     with open(PLAYLISTFILE, 'r') as infile:
         data = infile.read()
     data = json.loads(data)
-    for a in data:
-        if a['id'] == name:
-            for b in a['songs']:
-                playList.append(b['title'])
+    edit = False
+    for i, pl in enumerate(data):
+        if pl['id'] == name:
+            for j, s in enumerate(pl['songs']):
+                if 'url' in s.keys():
+                    if s['url'] != "":
+                        playList.append(s['url'])
+                        continue
+                if s['title'].startswith("https://www.youtube.com"):
+                    print("song title is URL")
+                    data[i]['songs'][j]['url'] = s['title']
+                else:
+                    print("searching for video URL...")
+                    data[i]['songs'][j]['url'] = (await getVideoUrls(s['title']))[0]
+                print(f"adding URL to data[{i}]['songs'][{j}], song name: '{s['title']}'")
+                edit = True
+                playList.append(data[i]['songs'][j]['url'])
+    if edit:
+        print("writing JSON to file")
+        with open(PLAYLISTFILE, 'w') as outfile:
+            outfile.write(json.dumps(data, indent=4))
+    print("parsing complete")
     if playList == []:
         print("playlist not found")
         await ctx.channel.send(f"playlist '{name}' not found, empty playlist")
