@@ -7,7 +7,7 @@ import json
 
 from dotenv import load_dotenv
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Bot
 from discord.voice_client import VoiceClient
 from youtube import getWithSearch, getWithUrl, getVideoUrls
@@ -19,9 +19,9 @@ TOKEN = os.getenv('TOKEN')
 DIR = os.getcwd()
 LOGFILE = os.path.join(DIR, "log.txt")
 
-
 bot = commands.Bot(command_prefix="!")
 
+STATUS = ""
 voiceClient = None
 gameStarted = False
 repeatFile = ""
@@ -47,10 +47,11 @@ def log(msg):
     logfile.close()
 
 def reset():
-    global voiceQueue, playList, repeatFile
+    global voiceQueue, playList, repeatFile, STATUS
     repeatFile = ""
     voiceQueue = []
     playList = []
+    STATUS = ""
 
 def checkVoiceClient():
     if VoiceClient == None or str(type(voiceClient)) != "<class 'discord.voice_client.VoiceClient'>":
@@ -60,7 +61,7 @@ def checkVoiceClient():
     return True
 
 def playSound(error=""):
-    global voiceQueue, playList, CTX, TASKS
+    global voiceQueue, playList, CTX, TASKS, STATUS
     try:
         if error != "":
             print(f"error: {str(error)}")
@@ -70,7 +71,7 @@ def playSound(error=""):
             return
         while len(voiceQueue) < 3 and len(playList) > 0:
             print(f"playSound: adding {playList[0]} to queue")
-            playWithUrl(playList.pop(0))
+            playWithUrl(playList[0][0], playList.pop(0)[1])
         if len(voiceQueue) == 0:
             print("queue is empty")
             log("queue is empty")
@@ -83,7 +84,8 @@ def playSound(error=""):
         print(f"playSound: error '{str(e)}'")
         return
     print("playing next item from queue")
-    voiceClient.play(voiceQueue.pop(0), after=playSound)
+    STATUS = voiceQueue[0][1]
+    voiceClient.play(voiceQueue.pop(0)[0], after=playSound)
 
 def repeat(error=""):
     global voiceQueue, CTX
@@ -174,7 +176,7 @@ async def play(ctx, *args):
             search = ' '.join(args)
         await playWithName(ctx, search, rep)
 
-def playWithUrl(url, rep=False):
+def playWithUrl(url, title="youtube", rep=False):
     global filenameIndex, voiceQueue, repeatFile
     filename = f"file-from-yt-{filenameIndex}"
     filenameIndex += 1
@@ -196,8 +198,8 @@ def playWithUrl(url, rep=False):
     else:
         audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audioFile))
         audio.volume = 0.3
-        log("adding new audio clip to queue") 
-        voiceQueue.append(audio)
+        log("adding new audio clip to queue")
+        voiceQueue.append((audio, title))
         playSound()
 
 async def playWithName(ctx, search, rep=False):
@@ -221,7 +223,7 @@ async def playWithName(ctx, search, rep=False):
     else:
         audio = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audioFile))
         audio.volume = 0.3
-        await queueSound(ctx, audio)
+        await queueSound(ctx, (audio, search))
 
 @bot.command(pass_context=True)
 async def playlist(ctx, *args):
@@ -249,7 +251,7 @@ async def playlist(ctx, *args):
             for j, s in enumerate(pl['songs']):
                 if 'url' in s.keys():
                     if s['url'] != "":
-                        playList.append(s['url'])
+                        playList.append((s['url'], s['title']))
                         continue
                 if s['title'].startswith("https://www.youtube.com"):
                     print("song title is URL")
@@ -259,7 +261,7 @@ async def playlist(ctx, *args):
                     data[i]['songs'][j]['url'] = (await getVideoUrls(s['title']))[0]
                 print(f"adding URL to data[{i}]['songs'][{j}], song name: '{s['title']}'")
                 edit = True
-                playList.append(data[i]['songs'][j]['url'])
+                playList.append((data[i]['songs'][j]['url'], s['title']))
     if edit:
         print("writing JSON to file")
         with open(PLAYLISTFILE, 'w') as outfile:
@@ -277,7 +279,7 @@ async def playlist(ctx, *args):
 
 @bot.command(pass_context=True)
 async def skip(ctx):
-    global voiceQueue, playList, repeatFile
+    global voiceQueue, playList, repeatFile, STATUS
     if voiceClient == None:
         return
     repeatFile = ""
@@ -287,7 +289,8 @@ async def skip(ctx):
         if len(playList) == 0:
             await ctx.channel.send("Queue is empty")
             return
-    voiceClient.source = voiceQueue.pop(0)
+    STATUS = voiceQueue[0][1]
+    voiceClient.source = voiceQueue.pop(0)[0]
 
 @bot.command(pass_context=True)
 async def stop(ctx):
@@ -316,23 +319,23 @@ async def villapaitapeli(ctx, *args):
     cmd = args[0]
     if cmd == "start":
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "sakarin_villapaitapeli.mp3"))
-        await queueSound(ctx, audio)
+        await queueSound(ctx, (audio, "villapaitapeli"))
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "pue_sakarille_villapaita.mp3"))
-        await queueSound(ctx, audio)
+        await queueSound(ctx, (audio, "villapaitapeli"))
         gameStarted = True
         return
     elif gameStarted and cmd == "joo":
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hihihi_kutittaa.mp3"))
-        await queueSound(ctx, audio)
+        await queueSound(ctx, (audio, "villapaitapeli"))
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "voitit_pelin.mp3"))
-        await queueSound(ctx, audio)
+        await queueSound(ctx, (audio, "villapaitapeli"))
         gameStarted = False
         return
     elif gameStarted and cmd == "ei":
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hmm.mp3"))
-        await queueSound(ctx, audio)
+        await queueSound(ctx, (audio, "villapaitapeli"))
         audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "villapaitapeli", "hävisit_pelin.mp3"))
-        await queueSound(ctx, audio)
+        await queueSound(ctx, (audio, "villapaitapeli"))
         gameStarted = False
         return
     else:
@@ -365,7 +368,7 @@ async def say(ctx, *args):
 
     sf.write(f'/tmp/say_{filenameIndex}.wav', wav, int(22050*1.0))
     audio = discord.FFmpegPCMAudio(f'/tmp/say_{filenameIndex}.wav')
-    await queueSound(ctx, audio)
+    await queueSound(ctx, (audio, "TTS"))
     filenameIndex += 1
 
 @bot.command(pass_context=True)
@@ -374,12 +377,29 @@ async def seven(ctx):
     if voiceClient == None:
         await join(ctx)
     audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "seiska.wav"))
-    await queueSound(ctx, audio)
+    await queueSound(ctx, (audio, "SEITSEMÄN"))
 
 @bot.event
 async def on_ready():
     print("[BOT READY]")
     log("Started bot")
+
+@tasks.loop(seconds=10.0)
+async def updateStatus():
+    global STATUS
+    print("TESTING LOOP")
+    if voiceClient == None and STATUS == "":
+        return
+    elif voiceClient == None and STATUS != "":
+        STATUS = ""
+    print(f"changing status to '{STATUS}'")
+    act = discord.Activity(type=discord.ActivityType.listening, name=STATUS)
+    await bot.change_presence(activity=act)
+
+@updateStatus.before_loop
+async def before():
+    await bot.wait_until_ready()
+    print("starting loop")
 
 class helpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
@@ -388,6 +408,7 @@ class helpCommand(commands.MinimalHelpCommand):
             text = "```\n" + infile.read() + "\n```"
         await destination.send(text)
 
+updateStatus.start()
 bot.help_command = helpCommand()
 
 bot.run(TOKEN)
