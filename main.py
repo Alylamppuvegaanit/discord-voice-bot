@@ -254,10 +254,8 @@ async def playlist(ctx, *args):
                         playList.append((s['url'], s['title']))
                         continue
                 if s['title'].startswith("https://www.youtube.com"):
-                    print("song title is URL")
                     data[i]['songs'][j]['url'] = s['title']
                 else:
-                    print("searching for video URL...")
                     data[i]['songs'][j]['url'] = (await getVideoUrls(s['title']))[0]
                 print(f"adding URL to data[{i}]['songs'][{j}], song name: '{s['title']}'")
                 edit = True
@@ -387,7 +385,6 @@ async def on_ready():
 @tasks.loop(seconds=10.0)
 async def updateStatus():
     global STATUS
-    print("TESTING LOOP")
     if voiceClient == None and STATUS == "":
         return
     elif voiceClient == None and STATUS != "":
@@ -399,7 +396,6 @@ async def updateStatus():
 @updateStatus.before_loop
 async def before():
     await bot.wait_until_ready()
-    print("starting loop")
 
 class helpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
