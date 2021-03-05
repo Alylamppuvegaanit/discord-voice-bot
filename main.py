@@ -47,11 +47,10 @@ def log(msg):
     logfile.close()
 
 def reset():
-    global voiceQueue, playList, repeatFile, STATUS
+    global voiceQueue, playList, repeatFile
     repeatFile = ""
     voiceQueue = []
     playList = []
-    STATUS = ""
 
 def checkVoiceClient():
     if VoiceClient == None or str(type(voiceClient)) != "<class 'discord.voice_client.VoiceClient'>":
