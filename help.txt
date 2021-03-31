@@ -4,7 +4,7 @@ leave: Leaves the voice channel
 pause: Pauses the playback. Can be resumed with "resume"
 play: Plays a video from youtube. can also be an url
   -r as the first argument will attempt to repeat the clip forever
-playlist: plays the given playlist. If no name is specified, plays the default playlist 
+playlist: plays the given playlist.
   -s as the first argument will shuffle the order
 resume: Resumes audio playback, if paused by "pause"
 say: Tries to convert given text to speech and play it

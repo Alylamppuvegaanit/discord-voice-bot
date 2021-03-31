@@ -47,7 +47,8 @@ def log(msg):
     logfile.close()
 
 def reset():
-    global voiceQueue, playList, repeatFile
+    global voiceQueue, playList, repeatFile, TASKS
+    TASKS = []
     repeatFile = ""
     voiceQueue = []
     playList = []
@@ -154,17 +155,22 @@ async def play(ctx, *args):
     rep = False
     while len(TASKS) != 0:
         try:
+            log("awaiting task 0")
             await TASKS[0]
         except:
+            log("error in awaiting task")
             break
         TASKS.pop(0)
     if VoiceClient == None:
+        log("play: join")
         await join(ctx)
     if len(args) == 0:
+        log("play with no arguments")
         print("no args")
         await ctx.channel.send("No name specified. Quitting...")
         return
     if args[0] == "-r":
+        log("repeat: True")
         rep = True
     if args[-1].startswith("https://www.youtube.com/"):
         playWithUrl(args[-1], rep)
@@ -206,7 +212,11 @@ async def playWithName(ctx, search, rep=False):
     filename = f"file-from-yt-{filenameIndex}"
     filenameIndex += 1
     print(f"getWithSearch({search}, {filename})")
-    await getWithSearch(search, filename)
+    try:
+        await getWithSearch(search, filename)
+    except Exception:
+        await ctx.channel.send("no search results")
+        return
     audioFile = os.path.join("/tmp", filename+".mp4")
     if not os.path.isfile(audioFile):
         log(f"file not found: {audioFile}")
@@ -284,6 +294,7 @@ async def skip(ctx):
         await play(ctx, playList.pop(0))
     if len(voiceQueue) == 0:
         if len(playList) == 0:
+            voiceClient.stop()
             await ctx.channel.send("Queue is empty")
             return
     STATUS = voiceQueue[0][1]
