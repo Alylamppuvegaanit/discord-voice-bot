@@ -17,6 +17,7 @@ load_dotenv()
 PLAYLISTFILE = "/home/roope/dev/discord-voice-bot-web/data/playlists.json"
 TOKEN = os.getenv('TOKEN')
 DIR = os.getcwd()
+PATH = os.path.join(DIR, "tmp")
 LOGFILE = os.path.join(DIR, "log.txt")
 
 bot = commands.Bot(command_prefix="!")
@@ -31,12 +32,6 @@ voiceQueue = []
 filenameIndex = 0
 TASKS = []
 CTX = None # This is spaghetti required to make things work, don't delete :-)
-
-# Setup TTS
-import synthesizer
-import soundfile as sf
-
-model, vocoder_model, speaker_id, CONFIG, use_cuda, ap = synthesizer.setup()
 
 def log(msg):
     if not os.path.isfile(LOGFILE):
@@ -161,7 +156,7 @@ async def play(ctx, *args):
             log("error in awaiting task")
             break
         TASKS.pop(0)
-    if VoiceClient == None:
+    if not checkVoiceClient():
         log("play: join")
         await join(ctx)
     if len(args) == 0:
@@ -183,15 +178,15 @@ async def play(ctx, *args):
 
 def playWithUrl(url, title="youtube", rep=False):
     global filenameIndex, voiceQueue, repeatFile
-    filename = f"file-from-yt-{filenameIndex}"
+    filename = f"file-from-yt-{filenameIndex}.mp4"
     filenameIndex += 1
     print(f"getWithUrl({url}, {filename})")
     try:
-        getWithUrl(url, filename)
+        getWithUrl(url, PATH, filename)
     except:
         print("bad video url")
         return
-    audioFile = os.path.join("/tmp", filename+".mp4")
+    audioFile = os.path.join(PATH, filename)
     if not os.path.isfile(audioFile):
         print(f"file not found: {audioFile}")
         log(f"file not found: {audioFile}")
@@ -211,9 +206,9 @@ async def playWithName(ctx, search, rep=False):
     global filenameIndex, voiceQueue, repeatFile
     filename = f"file-from-yt-{filenameIndex}"
     filenameIndex += 1
-    print(f"getWithSearch({search}, {filename})")
+    print(f"getWithSearch({search}, {path}, {filename})")
     try:
-        await getWithSearch(search, filename)
+        await getWithSearch(search, path, filename)
     except Exception:
         await ctx.channel.send("no search results")
         return
@@ -351,6 +346,21 @@ async def villapaitapeli(ctx, *args):
         return
 
 @bot.command(pass_context=True)
+async def seven(ctx):
+    log("SEVEN")
+    if voiceClient == None:
+        await join(ctx)
+    audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "seiska.wav"))
+    await queueSound(ctx, (audio, "SEITSEMÄN"))
+
+# TTS PART BEGINS
+"""
+import synthesizer
+import soundfile as sf
+
+model, vocoder_model, speaker_id, CONFIG, use_cuda, ap = synthesizer.setup()
+
+@bot.command(pass_context=True)
 async def say(ctx, *args):
     global filenameIndex
     if voiceClient == None:
@@ -378,14 +388,8 @@ async def say(ctx, *args):
     audio = discord.FFmpegPCMAudio(f'/tmp/say_{filenameIndex}.wav')
     await queueSound(ctx, (audio, "TTS"))
     filenameIndex += 1
-
-@bot.command(pass_context=True)
-async def seven(ctx):
-    log("SEVEN")
-    if voiceClient == None:
-        await join(ctx)
-    audio = discord.FFmpegPCMAudio(os.path.join(DIR, "data", "seiska.wav"))
-    await queueSound(ctx, (audio, "SEITSEMÄN"))
+"""
+# TTS PART ENDS
 
 @bot.event
 async def on_ready():
