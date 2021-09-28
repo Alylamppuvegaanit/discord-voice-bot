@@ -183,7 +183,8 @@ def playWithUrl(url, title="youtube", rep=False):
     print(f"getWithUrl({url}, {filename})")
     try:
         getWithUrl(url, PATH, filename)
-    except:
+    except Exception as e:
+        print(str(e))
         print("bad video url")
         return
     audioFile = os.path.join(PATH, filename)
